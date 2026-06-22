@@ -1,0 +1,13 @@
+[Unit]
+Description=Run pull-based deploy for %i every 5 minutes
+
+[Timer]
+# Wait a bit after boot so the network is up, then poll every 5 minutes.
+OnBootSec=2min
+OnUnitActiveSec=5min
+# Don't pile up missed runs if the Pi was asleep — just run once on resume.
+Persistent=true
+Unit=pi-deploy@%i.service
+
+[Install]
+WantedBy=timers.target

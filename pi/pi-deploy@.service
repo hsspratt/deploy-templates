@@ -1,0 +1,18 @@
+[Unit]
+Description=Pull-based deploy for %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+
+# systemd --user services get a MINIMAL PATH that excludes where claude, node,
+# and sometimes git live. This is the bug you already hit once. Add the common
+# locations here. Verify with `which claude git python3` and adjust if needed.
+Environment=PATH=%h/.local/bin:%h/.npm-global/bin:/usr/local/bin:/usr/bin:/bin
+
+ExecStart=%h/deploy/pi-deploy.sh %i
+
+# Keep deploy logs in the journal: `journalctl --user -u pi-deploy@<project>`
+StandardOutput=journal
+StandardError=journal

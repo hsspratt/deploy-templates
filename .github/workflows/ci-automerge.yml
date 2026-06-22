@@ -1,0 +1,79 @@
+name: CI + Auto-merge (reusable)
+
+# This is the single source of truth for CI + opt-in auto-merge across all
+# your projects. Each project calls it with a ~10-line caller workflow.
+# Fix a bug here once and every repo picks it up on its next PR.
+
+on:
+  workflow_call:
+    inputs:
+      test-command:
+        description: "Command that runs the test suite (must exit non-zero on failure)."
+        required: false
+        default: "python -m pytest"
+        type: string
+      setup-command:
+        description: "Optional command to install dependencies before tests run."
+        required: false
+        default: ""
+        type: string
+      python-version:
+        description: "Python version to set up. Set to '' to skip Python setup entirely."
+        required: false
+        default: "3.11"
+        type: string
+      automerge-label:
+        description: "PR label that opts a PR into auto-merge. Tests still must pass."
+        required: false
+        default: "automerge"
+        type: string
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Test gate — runs on every PR. Nothing merges unless this is green.
+  # ---------------------------------------------------------------------------
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: inputs.python-version != ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install dependencies
+        if: inputs.setup-command != ''
+        run: ${{ inputs.setup-command }}
+
+      - name: Run tests
+        run: ${{ inputs.test-command }}
+
+  # ---------------------------------------------------------------------------
+  # 2. Auto-merge — only runs when BOTH are true:
+  #      a) the test job above passed (needs: test), and
+  #      b) the PR carries the opt-in label.
+  #    This is your one-click veto: no label, no merge, even when green.
+  #    `--auto` respects branch protection and merges when required checks pass.
+  # ---------------------------------------------------------------------------
+  automerge:
+    name: Enable auto-merge
+    needs: test
+    if: >-
+      github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, inputs.automerge-label)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Arm squash auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr merge --squash --auto \
+            "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}"
