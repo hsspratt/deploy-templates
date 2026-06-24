@@ -57,10 +57,12 @@ jobs:
   #      a) the test job above passed (needs: test), and
   #      b) the PR carries the opt-in label.
   #    This is your one-click veto: no label, no merge, even when green.
-  #    `--auto` respects branch protection and merges when required checks pass.
+  #    We squash-merge directly (no --auto): the `needs: test` dependency IS the
+  #    gate, so this works on free private repos with no branch protection
+  #    (branch protection is a paid feature for private repos).
   # ---------------------------------------------------------------------------
   automerge:
-    name: Enable auto-merge
+    name: Auto-merge (CI-gated)
     needs: test
     if: >-
       github.event_name == 'pull_request' &&
@@ -70,10 +72,10 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - name: Arm squash auto-merge
+      - name: Squash-merge (tests green + labeled)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr merge --squash --auto \
+          gh pr merge --squash \
             "${{ github.event.pull_request.number }}" \
             --repo "${{ github.repository }}"
