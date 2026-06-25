@@ -22,6 +22,11 @@ on:
         required: false
         default: "3.11"
         type: string
+      node-version:
+        description: "Node.js version to set up. Set to '' (default) to skip. Use for JS/TS repos (set python-version to '' too)."
+        required: false
+        default: ""
+        type: string
       automerge-label:
         description: "PR label that opts a PR into auto-merge. Tests still must pass."
         required: false
@@ -44,6 +49,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python-version }}
+
+      - name: Set up Node.js
+        if: inputs.node-version != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
 
       - name: Install dependencies
         if: inputs.setup-command != ''
